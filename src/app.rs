@@ -11,9 +11,6 @@ use super::types::{
 pub fn options() -> Result<Opt, Box<dyn Error>> {
     let mut opt = Opt::from_args();
     if opt.is_invalid() {
-    //     if let Some(config) = parse_config(&opt.file) {
-    //         opt.patch(config)?;
-    //     }
         opt.patch(parse_config(&opt.file)?)?;
     }
     Ok(opt)
@@ -27,9 +24,6 @@ pub fn parse_config(file: &Option<String>) -> Result<Config, Box<dyn Error>> {
     } else {
         Err(Box::new(LackError::from("缺少必要的配置！")))
     }
-    // else {
-    //     read_config(&config_dir().unwrap())
-    // }
 }
 
 pub fn read_config(path: &str) -> Result<Config, Box<dyn Error>> {
@@ -38,10 +32,7 @@ pub fn read_config(path: &str) -> Result<Config, Box<dyn Error>> {
 
 pub fn config_dir() -> Option<String> {
     match env::consts::OS {
-        "windows" => match windows_config_dir() {
-            Some(path) => Some(path),
-            None => None,
-        },
+        "windows" => windows_config_dir(),
         "linux" => None,
         "macos" => None,
         _ => None,
