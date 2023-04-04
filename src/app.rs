@@ -91,26 +91,25 @@ pub fn build_url(opt: &Opt) -> Result<String, Box<dyn Error>> {
         println!("暂未实现, 敬请期待!");
         todo!();
     } else {
-        if opt.copy {
+        if opt.auto_copy {
             ub.add_param("autoCopy", "1");
         }
-        if let Some(content) = opt.content.as_ref() {
-            ub.add_param("copy", content);
+        if let Some(copy) = opt.copy.as_ref() {
+            ub.add_param("copy", copy);
         }
         if let Some(url) = opt.url.as_ref() {
             ub.add_param("url", url);
         }
-        if opt.archive == 1 {
+        if opt.archive {
             ub.add_param("isArchive", "1");
-        } else if opt.archive != 0 {
+        } else {
             ub.add_param("isArchive", "0");
         }
-        let level = match opt.level {
+        ub.add_param("level", match opt.level {
             0 => "active",
             1 => "timeSensitive",
             _ => "passive",
-        };
-        ub.add_param("level", level);
+        });
         if let Some(group) = opt.group.as_ref() {
             ub.add_param("group", group);
         }

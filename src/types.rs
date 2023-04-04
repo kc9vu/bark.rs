@@ -10,7 +10,7 @@ pub mod errors;
 #[structopt(
 name = "bark.rs",
 about = "Bark cli by Rust.",
-version = "1.1",
+version = "1.2",
 author = "kc9vu"
 )]
 pub struct Opt {
@@ -40,21 +40,21 @@ pub struct Opt {
 
     /// 自动复制
     #[structopt(short, long)]
-    pub copy: bool,
+    pub auto_copy: bool,
 
     /// 复制内容
-    #[structopt(short = "C", long)]
-    pub content: Option<String>,
+    #[structopt(short, long)]
+    pub copy: Option<String>,
 
     /// 链接
-    #[structopt(short = "U", long)]
+    #[structopt(short, long)]
     pub url: Option<String>,
 
-    /// 是否保存: 不指定时遵守客户端设置, 1 个标志保存, 多个标志不保存
-    #[structopt(short = "A", parse(from_occurrences))]
-    pub archive: i8,
+    /// 保存通知
+    #[structopt(short = "A")]
+    pub archive: bool,
 
-    /// 通知等级: 不指定为默认通知, 1 个标志为时效性通知, 多个标志为仅添加到通知列表
+    /// 通知等级: 默认为 active, 1 个标志为 time sensitive, 多个标志为 passive
     #[structopt(short = "L", parse(from_occurrences))]
     pub level: u8,
 
