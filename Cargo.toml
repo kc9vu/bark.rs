@@ -6,8 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-structopt = "0.3"
-serde = { version="1", features=["derive"] }
-serde_json = "1"
-url-builder = "0.1"
-reqwest = { version="0.11", features=["blocking", "json"] }
+structopt = "*"
+serde = { version="*", features=["derive"] }
+serde_json = "*"
+hyper = { version="*", features=["client", "http1"]}
+hyper-tls = "*"
+tokio = { version="*", features=["full"]}
+openssl = { version = "*", features = ["vendored"] }
+base64 = "*"
+urlencoding = "*"
