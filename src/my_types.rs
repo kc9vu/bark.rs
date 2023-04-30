@@ -1,7 +1,5 @@
 use std::error::Error;
 
-extern crate urlencoding;
-
 use super::{app, my_errors::LackError};
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 use openssl::symm::{encrypt, Cipher};
@@ -205,7 +203,7 @@ impl Opt {
         json.push('}');
 
         if let Some(true) = self.encrypt {
-            format!("ciphertext={}", urlencoding::encode(&self.enc(&json)))
+            format!("ciphertext={}", &self.enc(&json).replace("=", "%3D"))
         } else {
             json
         }
@@ -213,11 +211,21 @@ impl Opt {
 
     fn enc(&self, input: &str) -> String {
         let input = input.as_bytes();
-        let key = &BASE64_STANDARD.decode(self.key.as_ref().unwrap()).unwrap();
-        let iv = &BASE64_STANDARD.decode(self.iv.as_ref().unwrap()).unwrap();
+
+        let mut key = [0; 32];
+        let mut iv = [0; 16];
+
+        BASE64_STANDARD.decode_slice_unchecked(self.key.as_ref().unwrap(), &mut key).expect("加密 key 不可用!");
+        BASE64_STANDARD.decode_slice_unchecked(self.iv.as_ref().unwrap(), &mut iv).expect("加密 iv 不可用!");
+
+        // let key = &BASE64_STANDARD.decode(self.key.as_ref().unwrap()).unwrap();
+        // let iv = &BASE64_STANDARD.decode(self.iv.as_ref().unwrap()).unwrap();
+
+        // println!("key len: {}", &key.len());
+        // println!("iv  len: {}", &iv.len());
 
         let cipher = Cipher::aes_256_cbc();
-        BASE64_STANDARD.encode(encrypt(cipher, key, Some(iv), input).unwrap())
+        BASE64_STANDARD.encode(encrypt(cipher, &key, Some(&iv), input).unwrap())
     }
 
     pub async fn notify(&self) -> Result<Resp, Box<dyn Error>> {

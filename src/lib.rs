@@ -52,6 +52,8 @@ pub mod app {
         let response = client.request(request).await.unwrap();
 
         let body_bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+        // println!("Body len: {}", body_bytes.len());
+
         let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
 
         Ok(serde_json::from_str(&body_str)?)

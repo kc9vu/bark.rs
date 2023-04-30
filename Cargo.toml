@@ -9,9 +9,16 @@ edition = "2021"
 structopt = "*"
 serde = { version="*", features=["derive"] }
 serde_json = "*"
+openssl = { version = "*", features = ["vendored"] }
+base64 = "*"
+
+# urlencoding = "*"
+
 hyper = { version="*", features=["client", "http1"]}
 hyper-tls = "*"
 tokio = { version="*", features=["full"]}
-openssl = { version = "*", features = ["vendored"] }
-base64 = "*"
-urlencoding = "*"
+futures = "0.3"
+
+webpki = "*"
+rustls = "*"
+webpki-roots = "*"
