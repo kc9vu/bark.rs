@@ -1,21 +1,13 @@
 use structopt::StructOpt as _;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     let mut opt = bark_cli::my_types::Opt::from_args();
-    // opt.patch(app::parse_config(&opt.file)?)?;
+    opt.check().expect("出错啦!");
 
-    if let Err(error) = opt.check() {
-        eprintln!("Error: {}", error);
+    let resp = bark_cli::app::new_push(&opt);
+    if resp.code == 200 {
+        println!("{}", &resp.message);
     } else {
-        let resp = opt.notify().await?;
-        if resp.code == 200 {
-            println!("{}", &resp.message);
-        } else {
-            eprintln!("{}", &resp.message);
-        }
-        // println!("{:#?}", &opt);
-        // println!("{}", &opt.dumps());
+        eprintln!("{}", &resp.message);
     }
-    Ok(())
 }

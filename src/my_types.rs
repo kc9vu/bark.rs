@@ -1,16 +1,17 @@
 use std::error::Error;
 
-use super::{app, my_errors::LackError};
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 use openssl::symm::{encrypt, Cipher};
 use serde::Deserialize;
 use structopt::StructOpt;
 
+use super::{app, my_errors::LackError};
+
 #[derive(Debug, StructOpt)]
 #[structopt(
     name = "bark.rs",
     about = "Bark cli by Rust.",
-    version = "2.0",
+    version = "2.1",
     author = "kc9vu"
 )]
 pub struct Opt {
@@ -54,9 +55,9 @@ pub struct Opt {
     #[structopt(short = "A", long)]
     pub is_archive: Option<bool>,
 
-    /// 通知等级: 0 为 active, 正数为 time sensitive, 负数为 passive
+    /// 通知等级: 0 为 active, 1 为 time sensitive, 其它为 passive
     #[structopt(short, long, default_value = "0")]
-    pub level: i8,
+    pub level: u8,
 
     /// 分组
     #[structopt(short, long)]
@@ -151,6 +152,11 @@ impl Opt {
             self.encrypt = Some(true);
         }
 
+        // 加密提示
+        if let Some(true) = self.encrypt {
+            println!("由于未知原因(与新的请求方法无关), 加密暂时可能不可用");
+        }
+
         if let Some(message) = self.invalid_message() {
             Err(Box::new(LackError::from(message)))
         } else {
@@ -182,7 +188,7 @@ impl Opt {
             "level",
             match &self.level {
                 0 => "\"active\"",
-                1.. => "\"timeSensitive\"",
+                1 => "\"timeSensitive\"",
                 _ => "\"passive\"",
             },
         ));
@@ -203,7 +209,7 @@ impl Opt {
         json.push('}');
 
         if let Some(true) = self.encrypt {
-            format!("ciphertext={}", &self.enc(&json).replace("=", "%3D"))
+            format!("ciphertext={}", self.enc(&json).replace("=", "%3D"))
         } else {
             json
         }
@@ -215,8 +221,12 @@ impl Opt {
         let mut key = [0; 32];
         let mut iv = [0; 16];
 
-        BASE64_STANDARD.decode_slice_unchecked(self.key.as_ref().unwrap(), &mut key).expect("加密 key 不可用!");
-        BASE64_STANDARD.decode_slice_unchecked(self.iv.as_ref().unwrap(), &mut iv).expect("加密 iv 不可用!");
+        BASE64_STANDARD
+            .decode_slice_unchecked(self.key.as_ref().unwrap(), &mut key)
+            .expect("加密 key 不可用!");
+        BASE64_STANDARD
+            .decode_slice_unchecked(self.iv.as_ref().unwrap(), &mut iv)
+            .expect("加密 iv 不可用!");
 
         // let key = &BASE64_STANDARD.decode(self.key.as_ref().unwrap()).unwrap();
         // let iv = &BASE64_STANDARD.decode(self.iv.as_ref().unwrap()).unwrap();
@@ -226,10 +236,6 @@ impl Opt {
 
         let cipher = Cipher::aes_256_cbc();
         BASE64_STANDARD.encode(encrypt(cipher, &key, Some(&iv), input).unwrap())
-    }
-
-    pub async fn notify(&self) -> Result<Resp, Box<dyn Error>> {
-        Ok(app::push(self).await.unwrap())
     }
 }
 
