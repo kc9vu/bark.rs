@@ -3,7 +3,7 @@ use std::error::Error;
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 use openssl::symm::{encrypt, Cipher};
 use serde::Deserialize;
-use structopt::StructOpt;
+use structopt::{clap::ArgGroup, StructOpt};
 
 use super::{app, my_errors::LackError};
 
@@ -11,8 +11,9 @@ use super::{app, my_errors::LackError};
 #[structopt(
     name = "bark.rs",
     about = "Bark cli by Rust.",
-    version = "2.1",
-    author = "kc9vu"
+    version = "2.2",
+    author = "kc9vu",
+    group = ArgGroup::with_name("level_group")
 )]
 pub struct Opt {
     /// 配置文件, 缺少必需设置时从中查找. 不指定时从程序目录中查找
@@ -41,7 +42,7 @@ pub struct Opt {
 
     /// 自动复制
     #[structopt(short, long)]
-    pub auto_copy: bool,
+    pub auto_copy: Option<bool>,
 
     /// 复制内容
     #[structopt(short, long)]
@@ -55,9 +56,21 @@ pub struct Opt {
     #[structopt(short = "A", long)]
     pub is_archive: Option<bool>,
 
-    /// 通知等级: 0 为 active, 1 为 time sensitive, 其它为 passive
-    #[structopt(short, long, default_value = "0")]
-    pub level: u8,
+    /// 通知等级: 默认通知 (active), 时效性通知 (timeSensitive), 仅添加到通知列表 (passive)
+    #[structopt(short, long, group = "level_group")]
+    pub level: Option<String>,
+
+    /// 默认通知
+    #[structopt(long, group = "level_group")]
+    pub active: bool,
+
+    /// 时效性通知
+    #[structopt(long, group = "level_group")]
+    pub time_sensitive: bool,
+
+    /// 仅添加到通知列表
+    #[structopt(long, group = "level_group")]
+    pub passive: bool,
 
     /// 分组
     #[structopt(short, long)]
@@ -114,36 +127,76 @@ impl Opt {
         }
     }
 
-    pub fn patch(&mut self, cfg: Config) -> Result<(), Box<dyn Error>> {
-        if self.device_key.is_none() {
-            if let Some(device_key) = cfg.device_key {
-                self.device_key = Some(device_key);
-            } else {
-                return Err(Box::new(LackError::from("缺少必要的设备标识!")));
-            }
-        }
-
+    pub fn patch(&mut self, conf: Conf) -> Result<(), Box<dyn Error>> {
         if self.host.is_none() {
-            if let Some(host) = cfg.host {
+            if let Some(host) = conf.host {
                 self.host = Some(host);
             } else {
-                self.host = Some("https://api.day.app".to_string());
+                self.host = Some("api.day.app".to_string());
             }
         }
-
         if self.port.is_none() {
-            if let Some(port) = cfg.port {
+            if let Some(port) = conf.port {
                 self.port = Some(port);
             } else {
                 self.port = Some(443);
             }
         }
+        if self.device_key.is_none() {
+            if let Some(device_key) = conf.device_key {
+                self.device_key = Some(device_key);
+            } else {
+                return Err(Box::new(LackError::from("缺少必要的设备标识!")));
+            }
+        }
+        if self.title.is_none() {
+            if let Some(title) = conf.title {
+                self.title = Some(title);
+            }
+        }
+        if self.auto_copy.is_none() {
+            if let Some(auto_copy) = conf.auto_copy {
+                self.auto_copy = Some(auto_copy);
+            }
+        }
+        if self.is_archive.is_none() {
+            if let Some(is_archive) = conf.is_archive {
+                self.is_archive = Some(is_archive);
+            }
+        }
+        if self.level.is_none() && !(self.active || self.time_sensitive || self.passive) {
+            if let Some(level) = conf.level {
+                self.level = Some(level);
+            } else {
+                self.level = Some("active".to_string());
+            }
+        }
+        if self.group.is_none() {
+            if let Some(group) = conf.group {
+                self.group = Some(group);
+            }
+        }
+        if self.icon.is_none() {
+            if let Some(icon) = conf.icon {
+                self.icon = Some(icon);
+            }
+        }
+        if self.sound.is_none() {
+            if let Some(sound) = conf.sound {
+                self.sound = Some(sound);
+            }
+        }
 
+        if self.encrypt.is_none() {
+            if let Some(encrypt) = conf.encrypt {
+                self.encrypt = Some(encrypt);
+            }
+        }
         if self.key.is_none() && self.iv.is_none() {
-            if let Some(key) = cfg.key {
+            if let Some(key) = conf.key {
                 self.key = Some(key);
             }
-            if let Some(iv) = cfg.iv {
+            if let Some(iv) = conf.iv {
                 self.iv = Some(iv);
             }
         }
@@ -174,7 +227,9 @@ impl Opt {
         if let Some(title) = &self.title {
             items.push(json_pair("title", &quote_str(title)));
         }
-        items.push(json_pair("autoCopy", &self.auto_copy.to_string()));
+        if let Some(auto_copy) = &self.auto_copy {
+            items.push(json_pair("autoCopy", &auto_copy.to_string()));
+        }
         if let Some(copy) = &self.copy {
             items.push(json_pair("copy", &quote_str(copy)));
         }
@@ -184,14 +239,21 @@ impl Opt {
         if let Some(archive) = &self.is_archive {
             items.push(json_pair("isArchive", if *archive { "1" } else { "0" }));
         }
-        items.push(json_pair(
-            "level",
-            match &self.level {
-                0 => "\"active\"",
-                1 => "\"timeSensitive\"",
-                _ => "\"passive\"",
-            },
-        ));
+        if let Some(level) = &self.level {
+            items.push(json_pair("level", &quote_str(level)));
+        } else {
+            items.push(json_pair(
+                "level",
+                if self.time_sensitive {
+                    "\"timeSensitive\""
+                } else if self.passive {
+                    "\"passive\""
+                } else {
+                    "\"active\""
+                },
+            ));
+        }
+        // items.push(json_pair("level", self.level.as_ref().unwrap()));
         if let Some(group) = &self.group {
             items.push(json_pair("group", &quote_str(group)));
         }
@@ -209,7 +271,7 @@ impl Opt {
         json.push('}');
 
         if let Some(true) = self.encrypt {
-            format!("ciphertext={}", self.enc(&json).replace("=", "%3D"))
+            format!("ciphertext={}", self.enc(&json).replace('=', "%3D"))
         } else {
             json
         }
@@ -228,22 +290,24 @@ impl Opt {
             .decode_slice_unchecked(self.iv.as_ref().unwrap(), &mut iv)
             .expect("加密 iv 不可用!");
 
-        // let key = &BASE64_STANDARD.decode(self.key.as_ref().unwrap()).unwrap();
-        // let iv = &BASE64_STANDARD.decode(self.iv.as_ref().unwrap()).unwrap();
-
-        // println!("key len: {}", &key.len());
-        // println!("iv  len: {}", &iv.len());
-
         let cipher = Cipher::aes_256_cbc();
         BASE64_STANDARD.encode(encrypt(cipher, &key, Some(&iv), input).unwrap())
     }
 }
 
 #[derive(Deserialize)]
-pub struct Config {
+pub struct Conf {
     pub host: Option<String>,
     pub port: Option<u16>,
     pub device_key: Option<String>,
+    pub title: Option<String>,
+    pub auto_copy: Option<bool>,
+    pub is_archive: Option<bool>,
+    pub level: Option<String>,
+    pub group: Option<String>,
+    pub icon: Option<String>,
+    pub sound: Option<String>,
+    pub encrypt: Option<bool>,
     pub key: Option<String>,
     pub iv: Option<String>,
 }

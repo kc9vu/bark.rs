@@ -4,6 +4,8 @@ fn main() {
     let mut opt = bark_cli::my_types::Opt::from_args();
     opt.check().expect("出错啦!");
 
+    // println!("{:#?}", &opt);
+
     let resp = bark_cli::app::new_push(&opt);
     if resp.code == 200 {
         println!("{}", &resp.message);

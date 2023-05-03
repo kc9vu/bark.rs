@@ -15,7 +15,7 @@ pub mod app {
 
     use super::my_types::*;
 
-    pub fn read_file_config(path: &str) -> Result<Config, Box<dyn Error>> {
+    pub fn read_file_config(path: &str) -> Result<Conf, Box<dyn Error>> {
         Ok(serde_json::from_reader(File::open(path)?)?)
     }
 
@@ -72,7 +72,7 @@ pub mod app {
         let mut sock = TcpStream::connect(format!("{host}:{port}")).expect("TCP 连接失败!");
         let mut tls = rustls::Stream::new(&mut conn, &mut sock);
 
-        tls.write_all(&buf.as_bytes()).expect("发送请求错误!");
+        tls.write_all(buf.as_bytes()).expect("发送请求错误!");
 
         let mut resp = String::with_capacity(256);
         // println!("开始接收");
