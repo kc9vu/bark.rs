@@ -11,7 +11,7 @@ use super::{app, my_errors::LackError};
 #[structopt(
     name = "bark.rs",
     about = "Bark cli by Rust.",
-    version = "2.2",
+    version = "2.2.1",
     author = "kc9vu",
     group = ArgGroup::with_name("level_group")
 )]
@@ -42,7 +42,7 @@ pub struct Opt {
 
     /// 自动复制
     #[structopt(short, long)]
-    pub auto_copy: Option<bool>,
+    pub auto_copy: bool,
 
     /// 复制内容
     #[structopt(short, long)]
@@ -154,11 +154,11 @@ impl Opt {
                 self.title = Some(title);
             }
         }
-        if self.auto_copy.is_none() {
-            if let Some(auto_copy) = conf.auto_copy {
-                self.auto_copy = Some(auto_copy);
-            }
-        }
+        // if self.auto_copy.is_none() {
+        //     if let Some(auto_copy) = conf.auto_copy {
+        //         self.auto_copy = Some(auto_copy);
+        //     }
+        // }
         if self.is_archive.is_none() {
             if let Some(is_archive) = conf.is_archive {
                 self.is_archive = Some(is_archive);
@@ -227,8 +227,8 @@ impl Opt {
         if let Some(title) = &self.title {
             items.push(json_pair("title", &quote_str(title)));
         }
-        if let Some(auto_copy) = &self.auto_copy {
-            items.push(json_pair("autoCopy", &auto_copy.to_string()));
+        if self.auto_copy {
+            items.push(json_pair("autoCopy", "true"));
         }
         if let Some(copy) = &self.copy {
             items.push(json_pair("copy", &quote_str(copy)));
@@ -301,7 +301,6 @@ pub struct Conf {
     pub port: Option<u16>,
     pub device_key: Option<String>,
     pub title: Option<String>,
-    pub auto_copy: Option<bool>,
     pub is_archive: Option<bool>,
     pub level: Option<String>,
     pub group: Option<String>,

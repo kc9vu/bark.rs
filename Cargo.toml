@@ -15,3 +15,9 @@ base64 = "*"
 webpki = "*"
 rustls = "*"
 webpki-roots = "*"
+
+[profile.release]
+lto = true
+
+[registries.crates-io]
+protocol = "sparse"
